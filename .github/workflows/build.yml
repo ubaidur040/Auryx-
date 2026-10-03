@@ -1,4 +1,4 @@
-name: Build APK
+name: Show Build Files
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  show:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,98 +17,34 @@ jobs:
         run: |
           unzip -o auryx.zip -d auryx-project
 
-      - name: Remove aapt2 override line
+      - name: Show build.gradle files
         run: |
-          cd auryx-project/android
-          sed -i '/android.aapt2FromMavenOverride/d' gradle.properties
-
-      - name: Place google-services.json
-        run: |
-          cp google-services.json auryx-project/android/app/google-services.json
-
-      - name: Show current gradle files
-        run: |
-          echo "=== build.gradle ==="
-          cat auryx-project/android/app/build.gradle 2>/dev/null || echo "No build.gradle"
+          echo "=========================================="
+          echo "=== android/app/build.gradle ==="
+          echo "=========================================="
+          cat auryx-project/android/app/build.gradle 2>/dev/null || echo "FILE NOT FOUND: build.gradle"
           echo ""
-          echo "=== build.gradle.kts ==="
-          cat auryx-project/android/app/build.gradle.kts 2>/dev/null || echo "No build.gradle.kts"
-
-      - name: Fix compileSdk with Python
-        run: |
-          cd auryx-project/android/app
-          python3 -c "
-          import os, re
-          for fname in ['build.gradle', 'build.gradle.kts']:
-              if os.path.exists(fname):
-                  with open(fname, 'r') as f:
-                      content = f.read()
-                  # Replace all compileSdk variations with 36
-                  content = re.sub(r'compileSdk\s*[=]?\s*\d+', 'compileSdk = 36', content)
-                  content = re.sub(r'compileSdkVersion\s*[=]?\s*[\d.]+', 'compileSdkVersion = 36', content)
-                  content = re.sub(r'compileSdkVersion\s+flutter\.compileSdkVersion', 'compileSdkVersion 36', content)
-                  with open(fname, 'w') as f:
-                      f.write(content)
-                  print(f'Updated {fname}')
-                  print('--- New content (compileSdk lines) ---')
-                  for line in content.split('\n'):
-                      if 'compileSdk' in line.lower():
-                          print(line)
-          "
-
-      - name: Add firebase packages to pubspec.yaml
-        run: |
-          cd auryx-project
-          sed -i '/^dependencies:/a\  firebase_core: ^2.24.0\n  firebase_auth: ^4.15.0' pubspec.yaml
-
-      - name: Update main.dart with Firebase init
-        run: |
-          cd auryx-project/lib
-          python3 -c "
-          content = open('main.dart').read()
-          old = '''import 'package:flutter/material.dart';
-
-          void main() => runApp(const AuryxApp());'''
-          new = '''import 'package:flutter/material.dart';
-          import 'package:firebase_core/firebase_core.dart';
-
-          void main() async {
-            WidgetsFlutterBinding.ensureInitialized();
-            await Firebase.initializeApp();
-            runApp(const AuryxApp());
-          }'''
-          if old in content:
-              content = content.replace(old, new)
-              print('Updated main.dart with Firebase init')
-          else:
-              print('WARNING: Could not find the target text in main.dart')
-          open('main.dart', 'w').write(content)
-          "
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.47.6'
-          channel: 'stable'
-
-      - name: Get dependencies
-        run: |
-          cd auryx-project
-          flutter pub get
-
-      - name: Build APK
-        run: |
-          cd auryx-project
-          flutter build apk --release
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: auryx-release-apk
-          path: auryx-project/build/app/outputs/flutter-apk/app-release.apk
+          echo "=========================================="
+          echo "=== android/app/build.gradle.kts ==="
+          echo "=========================================="
+          cat auryx-project/android/app/build.gradle.kts 2>/dev/null || echo "FILE NOT FOUND: build.gradle.kts"
+          echo ""
+          echo "=========================================="
+          echo "=== android/build.gradle ==="
+          echo "=========================================="
+          cat auryx-project/android/build.gradle 2>/dev/null || echo "FILE NOT FOUND: android/build.gradle"
+          echo ""
+          echo "=========================================="
+          echo "=== android/build.gradle.kts ==="
+          echo "=========================================="
+          cat auryx-project/android/build.gradle.kts 2>/dev/null || echo "FILE NOT FOUND: android/build.gradle.kts"
+          echo ""
+          echo "=========================================="
+          echo "=== List files in android/app ==="
+          echo "=========================================="
+          ls -la auryx-project/android/app/
+          echo ""
+          echo "=========================================="
+          echo "=== List files in android ==="
+          echo "=========================================="
+          ls -la auryx-project/android/
