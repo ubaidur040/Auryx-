@@ -31,45 +31,50 @@ jobs:
           cd auryx-project
           sed -i '/^dependencies:/a\  shared_preferences: ^2.2.0' pubspec.yaml
 
-      - name: Update main.dart with Firebase and SharedPreferences
+      - name: Fix main.dart
         run: |
           cd auryx-project/lib
-          python3 -c "
-          content = open('main.dart').read()
+          python3 << 'PYEOF'
+          with open('main.dart', 'r') as f:
+              content = f.read()
 
-          # Import
-          old_import = \"import 'package:firebase_core/firebase_core.dart';\"
-          new_import = \"import 'package:firebase_core/firebase_core.dart';\nimport 'package:shared_preferences/shared_preferences.dart';\"
-          content = content.replace(old_import, new_import)
+          # 1. Add imports
+          if 'shared_preferences' not in content:
+              content = content.replace(
+                  "import 'package:flutter/material.dart';",
+                  "import 'package:flutter/material.dart';\nimport 'package:shared_preferences/shared_preferences.dart';"
+              )
 
-          # Main function
-          old_main = '''void main() async {
-            WidgetsFlutterBinding.ensureInitialized();
-            await Firebase.initializeApp();
-            runApp(const AuryxApp());
-          }'''
-          new_main = '''void main() async {
+          # 2. Fix main() function
+          import re
+          content = re.sub(
+              r'void main\(\) async \{.*?\n\}',
+              '''void main() async {
             WidgetsFlutterBinding.ensureInitialized();
             await Firebase.initializeApp();
             await AppState.load();
             runApp(const AuryxApp());
-          }'''
-          content = content.replace(old_main, new_main)
+          }''',
+              content,
+              count=1,
+              flags=re.DOTALL
+          )
 
-          # AppState class
-          old_appstate = '''class AppState {
-            static String userName = \"আবু উবাইদা\";
-            static String userEmail = \"abu@auryx.app\";
-            static String userPhone = \"+8801712345678\";
+          # 3. Fix AppState class - add load/save methods
+          if 'static Future<void> load()' not in content:
+              old_appstate = '''class AppState {
+            static String userName = "আবু উবাইদা";
+            static String userEmail = "abu@auryx.app";
+            static String userPhone = "+8801712345678";
             static String? profileImagePath;
             static bool isBangla = true;
             static bool isDarkMode = true;
           }'''
 
-          new_appstate = '''class AppState {
-            static String userName = \"আবু উবাইদা\";
-            static String userEmail = \"abu@auryx.app\";
-            static String userPhone = \"+8801712345678\";
+              new_appstate = '''class AppState {
+            static String userName = "আবু উবাইদা";
+            static String userEmail = "abu@auryx.app";
+            static String userPhone = "+8801712345678";
             static String? profileImagePath;
             static bool isBangla = true;
             static bool isDarkMode = true;
@@ -82,6 +87,7 @@ jobs:
               profileImagePath = prefs.getString('profileImagePath');
               isBangla = prefs.getBool('isBangla') ?? isBangla;
               isDarkMode = prefs.getBool('isDarkMode') ?? isDarkMode;
+              print("LOADED: userName = $userName, email = $userEmail");
             }
 
             static Future<void> save() async {
@@ -94,38 +100,37 @@ jobs:
               }
               await prefs.setBool('isBangla', isBangla);
               await prefs.setBool('isDarkMode', isDarkMode);
+              print("SAVED: userName = $userName, email = $userEmail");
             }
           }'''
 
-          content = content.replace(old_appstate, new_appstate)
+              content = content.replace(old_appstate, new_appstate)
 
-          # Register screen - save after setting AppState
-          old_register = '''if (_nameCtrl.text.isNotEmpty) {
-                    AppState.userName = _nameCtrl.text;
-                  }
-                  if (_emailCtrl.text.isNotEmpty) {
-                    AppState.userEmail = _emailCtrl.text;
-                  }
-                  if (_phoneCtrl.text.isNotEmpty) {
-                    AppState.userPhone = _phoneCtrl.text;
-                  }'''
+          # 4. Make Register onTap async
+          content = content.replace(
+              'onTap: () {\n                  // নাম সেভ করো',
+              'onTap: () async {\n                  // নাম সেভ করো'
+          )
 
-          new_register = '''if (_nameCtrl.text.isNotEmpty) {
-                    AppState.userName = _nameCtrl.text;
-                  }
-                  if (_emailCtrl.text.isNotEmpty) {
-                    AppState.userEmail = _emailCtrl.text;
-                  }
-                  if (_phoneCtrl.text.isNotEmpty) {
-                    AppState.userPhone = _phoneCtrl.text;
-                  }
-                  await AppState.save();'''
+          with open('main.dart', 'w') as f:
+              f.write(content)
 
-          content = content.replace(old_register, new_register)
+          print('=== VERIFICATION ===')
+          print('has shared_preferences import:', 'shared_preferences' in content)
+          print('has AppState.load in main:', 'AppState.load()' in content)
+          print('has load method:', 'static Future<void> load()' in content)
+          print('has save method:', 'static Future<void> save()' in content)
+          print('has async onTap:', 'onTap: () async' in content)
+          PYEOF
 
-          open('main.dart', 'w').write(content)
-          print('main.dart updated with save() calls')
-          "
+      - name: Show AppState in main.dart
+        run: |
+          cd auryx-project/lib
+          echo "=== main() function ==="
+          grep -A 6 "void main" main.dart
+          echo ""
+          echo "=== AppState class ==="
+          grep -A 40 "class AppState" main.dart | head -45
 
       - name: Setup Java
         uses: actions/setup-java@v4
