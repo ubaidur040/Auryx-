@@ -33,29 +33,83 @@ jobs:
           echo "=== pubspec.yaml after update ==="
           grep -A 5 "^dependencies:" pubspec.yaml
 
-      - name: Update main.dart with Firebase init
+      - name: Update main.dart with SharedPreferences
         run: |
           cd auryx-project/lib
           python3 -c "
           content = open('main.dart').read()
-          old = '''import 'package:flutter/material.dart';
 
-          void main() => runApp(const AuryxApp());'''
-          new = '''import 'package:flutter/material.dart';
-          import 'package:firebase_core/firebase_core.dart';
+          # 1. Add import
+          old_import = \"import 'package:firebase_core/firebase_core.dart';\"
+          new_import = \"import 'package:firebase_core/firebase_core.dart';\nimport 'package:shared_preferences/shared_preferences.dart';\"
+          content = content.replace(old_import, new_import)
 
-          void main() async {
+          # 2. Update main function
+          old_main = '''void main() async {
             WidgetsFlutterBinding.ensureInitialized();
             await Firebase.initializeApp();
             runApp(const AuryxApp());
           }'''
-          if old in content:
-              content = content.replace(old, new)
-              print('Updated main.dart with Firebase init')
-          else:
-              print('WARNING: Could not find the target text in main.dart')
+          new_main = '''void main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+            await Firebase.initializeApp();
+            await AppState.load();
+            runApp(const AuryxApp());
+          }'''
+          content = content.replace(old_main, new_main)
+
+          # 3. Add load() and save() methods to AppState class
+          old_appstate = '''class AppState {
+            static String userName = \"আবু উবাইদা\";
+            static String userEmail = \"abu@auryx.app\";
+            static String userPhone = \"+8801712345678\";
+            static String? profileImagePath;
+            static bool isBangla = true;
+            static bool isDarkMode = true;
+          }'''
+
+          new_appstate = '''class AppState {
+            static String userName = \"আবু উবাইদা\";
+            static String userEmail = \"abu@auryx.app\";
+            static String userPhone = \"+8801712345678\";
+            static String? profileImagePath;
+            static bool isBangla = true;
+            static bool isDarkMode = true;
+
+            static Future<void> load() async {
+              final prefs = await SharedPreferences.getInstance();
+              userName = prefs.getString('userName') ?? userName;
+              userEmail = prefs.getString('userEmail') ?? userEmail;
+              userPhone = prefs.getString('userPhone') ?? userPhone;
+              profileImagePath = prefs.getString('profileImagePath');
+              isBangla = prefs.getBool('isBangla') ?? isBangla;
+              isDarkMode = prefs.getBool('isDarkMode') ?? isDarkMode;
+            }
+
+            static Future<void> save() async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('userName', userName);
+              await prefs.setString('userEmail', userEmail);
+              await prefs.setString('userPhone', userPhone);
+              if (profileImagePath != null) {
+                await prefs.setString('profileImagePath', profileImagePath!);
+              }
+              await prefs.setBool('isBangla', isBangla);
+              await prefs.setBool('isDarkMode', isDarkMode);
+            }
+          }'''
+
+          content = content.replace(old_appstate, new_appstate)
+
           open('main.dart', 'w').write(content)
+          print('Updated main.dart with SharedPreferences')
           "
+
+      - name: Show updated AppState
+        run: |
+          cd auryx-project/lib
+          echo "=== AppState section ==="
+          grep -A 30 "class AppState" main.dart || echo "AppState not found"
 
       - name: Setup Java
         uses: actions/setup-java@v4
