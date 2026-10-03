@@ -17,6 +17,11 @@ jobs:
         run: |
           unzip -o auryx.zip -d auryx-project
 
+      - name: Remove aapt2 override line
+        run: |
+          cd auryx-project/android
+          sed -i '/android.aapt2FromMavenOverride/d' gradle.properties
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
