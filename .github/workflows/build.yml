@@ -26,17 +26,12 @@ jobs:
         run: |
           cp google-services.json auryx-project/android/app/google-services.json
 
-      - name: Fix compileSdk in build.gradle.kts
-        run: |
-          cd auryx-project/android/app
-          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' build.gradle.kts
-          echo "=== After fix ==="
-          grep "compileSdk" build.gradle.kts
-
-      - name: Add firebase packages to pubspec.yaml
+      - name: Add shared_preferences to pubspec.yaml
         run: |
           cd auryx-project
-          sed -i '/^dependencies:/a\  firebase_core: ^2.24.0\n  firebase_auth: ^4.15.0' pubspec.yaml
+          sed -i '/^dependencies:/a\  shared_preferences: ^2.2.0' pubspec.yaml
+          echo "=== pubspec.yaml after update ==="
+          grep -A 5 "^dependencies:" pubspec.yaml
 
       - name: Update main.dart with Firebase init
         run: |
