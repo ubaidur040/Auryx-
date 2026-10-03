@@ -26,6 +26,14 @@ jobs:
         run: |
           cp google-services.json auryx-project/android/app/google-services.json
 
+      - name: Update compileSdk to 36
+        run: |
+          cd auryx-project/android/app
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' build.gradle
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/' build.gradle
+          sed -i 's/compileSdkVersion 34/compileSdkVersion 36/' build.gradle
+          sed -i 's/compileSdk 34/compileSdk 36/' build.gradle
+
       - name: Add firebase packages to pubspec.yaml
         run: |
           cd auryx-project
