@@ -1,4 +1,4 @@
-name: Show Build Files
+name: Build APK
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  show:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,34 +17,75 @@ jobs:
         run: |
           unzip -o auryx.zip -d auryx-project
 
-      - name: Show build.gradle files
+      - name: Remove aapt2 override line
         run: |
-          echo "=========================================="
-          echo "=== android/app/build.gradle ==="
-          echo "=========================================="
-          cat auryx-project/android/app/build.gradle 2>/dev/null || echo "FILE NOT FOUND: build.gradle"
-          echo ""
-          echo "=========================================="
-          echo "=== android/app/build.gradle.kts ==="
-          echo "=========================================="
-          cat auryx-project/android/app/build.gradle.kts 2>/dev/null || echo "FILE NOT FOUND: build.gradle.kts"
-          echo ""
-          echo "=========================================="
-          echo "=== android/build.gradle ==="
-          echo "=========================================="
-          cat auryx-project/android/build.gradle 2>/dev/null || echo "FILE NOT FOUND: android/build.gradle"
-          echo ""
-          echo "=========================================="
-          echo "=== android/build.gradle.kts ==="
-          echo "=========================================="
-          cat auryx-project/android/build.gradle.kts 2>/dev/null || echo "FILE NOT FOUND: android/build.gradle.kts"
-          echo ""
-          echo "=========================================="
-          echo "=== List files in android/app ==="
-          echo "=========================================="
-          ls -la auryx-project/android/app/
-          echo ""
-          echo "=========================================="
-          echo "=== List files in android ==="
-          echo "=========================================="
-          ls -la auryx-project/android/
+          cd auryx-project/android
+          sed -i '/android.aapt2FromMavenOverride/d' gradle.properties
+
+      - name: Place google-services.json
+        run: |
+          cp google-services.json auryx-project/android/app/google-services.json
+
+      - name: Fix compileSdk in build.gradle.kts
+        run: |
+          cd auryx-project/android/app
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' build.gradle.kts
+          echo "=== After fix ==="
+          grep "compileSdk" build.gradle.kts
+
+      - name: Add firebase packages to pubspec.yaml
+        run: |
+          cd auryx-project
+          sed -i '/^dependencies:/a\  firebase_core: ^2.24.0\n  firebase_auth: ^4.15.0' pubspec.yaml
+
+      - name: Update main.dart with Firebase init
+        run: |
+          cd auryx-project/lib
+          python3 -c "
+          content = open('main.dart').read()
+          old = '''import 'package:flutter/material.dart';
+
+          void main() => runApp(const AuryxApp());'''
+          new = '''import 'package:flutter/material.dart';
+          import 'package:firebase_core/firebase_core.dart';
+
+          void main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+            await Firebase.initializeApp();
+            runApp(const AuryxApp());
+          }'''
+          if old in content:
+              content = content.replace(old, new)
+              print('Updated main.dart with Firebase init')
+          else:
+              print('WARNING: Could not find the target text in main.dart')
+          open('main.dart', 'w').write(content)
+          "
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: |
+          cd auryx-project
+          flutter pub get
+
+      - name: Build APK
+        run: |
+          cd auryx-project
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: auryx-release-apk
+          path: auryx-project/build/app/outputs/flutter-apk/app-release.apk
