@@ -26,6 +26,35 @@ jobs:
         run: |
           cp google-services.json auryx-project/android/app/google-services.json
 
+      - name: Add firebase_core to pubspec.yaml
+        run: |
+          cd auryx-project
+          sed -i '/^dependencies:/a\  firebase_core: ^2.24.0' pubspec.yaml
+
+      - name: Update main.dart with Firebase init
+        run: |
+          cd auryx-project/lib
+          python3 -c "
+          content = open('main.dart').read()
+          old = '''import 'package:flutter/material.dart';
+
+          void main() => runApp(const AuryxApp());'''
+          new = '''import 'package:flutter/material.dart';
+          import 'package:firebase_core/firebase_core.dart';
+
+          void main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+            await Firebase.initializeApp();
+            runApp(const AuryxApp());
+          }'''
+          if old in content:
+              content = content.replace(old, new)
+              print('Updated main.dart with Firebase init')
+          else:
+              print('WARNING: Could not find the target text in main.dart')
+          open('main.dart', 'w').write(content)
+          "
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
