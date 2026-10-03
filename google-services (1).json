@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "956634267069",
+    "project_id": "auryx-93b7a",
+    "storage_bucket": "auryx-93b7a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:956634267069:android:5af657a672bf597feae6d4",
+        "android_client_info": {
+          "package_name": "com.example.auryx"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAL1rxJyG8VJ9udKHIQ2EBRDTIu7V5V8O8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
