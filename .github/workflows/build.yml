@@ -26,10 +26,10 @@ jobs:
         run: |
           cp google-services.json auryx-project/android/app/google-services.json
 
-      - name: Add firebase_core to pubspec.yaml
+      - name: Add firebase packages to pubspec.yaml
         run: |
           cd auryx-project
-          sed -i '/^dependencies:/a\  firebase_core: ^2.24.0' pubspec.yaml
+          sed -i '/^dependencies:/a\  firebase_core: ^2.24.0\n  firebase_auth: ^4.15.0' pubspec.yaml
 
       - name: Update main.dart with Firebase init
         run: |
