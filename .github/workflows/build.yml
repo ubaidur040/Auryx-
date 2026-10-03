@@ -26,24 +26,35 @@ jobs:
         run: |
           cp google-services.json auryx-project/android/app/google-services.json
 
-      - name: Update compileSdk to 36
+      - name: Show current gradle files
+        run: |
+          echo "=== build.gradle ==="
+          cat auryx-project/android/app/build.gradle 2>/dev/null || echo "No build.gradle"
+          echo ""
+          echo "=== build.gradle.kts ==="
+          cat auryx-project/android/app/build.gradle.kts 2>/dev/null || echo "No build.gradle.kts"
+
+      - name: Fix compileSdk with Python
         run: |
           cd auryx-project/android/app
-          if [ -f build.gradle ]; then
-            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/' build.gradle
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' build.gradle
-            sed -i 's/compileSdkVersion 34/compileSdkVersion 36/' build.gradle
-            sed -i 's/compileSdk 34/compileSdk 36/' build.gradle
-            echo "=== build.gradle after update ==="
-            grep -i "compileSdk" build.gradle
-          fi
-          if [ -f build.gradle.kts ]; then
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' build.gradle.kts
-            sed -i 's/compileSdkVersion = flutter.compileSdkVersion/compileSdkVersion = 36/' build.gradle.kts
-            sed -i 's/compileSdk = 34/compileSdk = 36/' build.gradle.kts
-            echo "=== build.gradle.kts after update ==="
-            grep -i "compileSdk" build.gradle.kts
-          fi
+          python3 -c "
+          import os, re
+          for fname in ['build.gradle', 'build.gradle.kts']:
+              if os.path.exists(fname):
+                  with open(fname, 'r') as f:
+                      content = f.read()
+                  # Replace all compileSdk variations with 36
+                  content = re.sub(r'compileSdk\s*[=]?\s*\d+', 'compileSdk = 36', content)
+                  content = re.sub(r'compileSdkVersion\s*[=]?\s*[\d.]+', 'compileSdkVersion = 36', content)
+                  content = re.sub(r'compileSdkVersion\s+flutter\.compileSdkVersion', 'compileSdkVersion 36', content)
+                  with open(fname, 'w') as f:
+                      f.write(content)
+                  print(f'Updated {fname}')
+                  print('--- New content (compileSdk lines) ---')
+                  for line in content.split('\n'):
+                      if 'compileSdk' in line.lower():
+                          print(line)
+          "
 
       - name: Add firebase packages to pubspec.yaml
         run: |
