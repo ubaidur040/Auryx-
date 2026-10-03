@@ -30,18 +30,20 @@ jobs:
         run: |
           cd auryx-project/android/app
           if [ -f build.gradle ]; then
-            sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/' build.gradle
-            sed -i 's/compileSdk [0-9]*/compileSdk 36/' build.gradle
-            sed -i 's/flutter.compileSdkVersion/36/' build.gradle
-            echo "Updated build.gradle"
+            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/' build.gradle
+            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' build.gradle
+            sed -i 's/compileSdkVersion 34/compileSdkVersion 36/' build.gradle
+            sed -i 's/compileSdk 34/compileSdk 36/' build.gradle
+            echo "=== build.gradle after update ==="
+            grep -i "compileSdk" build.gradle
           fi
           if [ -f build.gradle.kts ]; then
-            sed -i 's/compileSdk = [0-9]*/compileSdk = 36/' build.gradle.kts
-            sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 36/' build.gradle.kts
-            sed -i 's/flutter.compileSdkVersion/36/' build.gradle.kts
-            echo "Updated build.gradle.kts"
+            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' build.gradle.kts
+            sed -i 's/compileSdkVersion = flutter.compileSdkVersion/compileSdkVersion = 36/' build.gradle.kts
+            sed -i 's/compileSdk = 34/compileSdk = 36/' build.gradle.kts
+            echo "=== build.gradle.kts after update ==="
+            grep -i "compileSdk" build.gradle.kts
           fi
-          ls -la
 
       - name: Add firebase packages to pubspec.yaml
         run: |
