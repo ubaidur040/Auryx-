@@ -22,6 +22,10 @@ jobs:
           cd auryx-project/android
           sed -i '/android.aapt2FromMavenOverride/d' gradle.properties
 
+      - name: Place google-services.json
+        run: |
+          cp google-services.json auryx-project/android/app/google-services.json
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
