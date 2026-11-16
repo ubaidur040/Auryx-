@@ -1,3 +1,8 @@
+# Simplified AURYX build workflow — no build-time code patching.
+#
+# The persistence fix (SharedPreferences load/save in AppState, async main())
+# is already applied directly in auryx.zip, so this workflow only builds.
+# To update the app: edit the project, re-zip it as auryx.zip, push to main.
 name: Build APK
 
 on:
@@ -17,120 +22,9 @@ jobs:
         run: |
           unzip -o auryx.zip -d auryx-project
 
-      - name: Remove aapt2 override line
-        run: |
-          cd auryx-project/android
-          sed -i '/android.aapt2FromMavenOverride/d' gradle.properties
-
       - name: Place google-services.json
         run: |
           cp google-services.json auryx-project/android/app/google-services.json
-
-      - name: Add shared_preferences to pubspec.yaml
-        run: |
-          cd auryx-project
-          sed -i '/^dependencies:/a\  shared_preferences: ^2.2.0' pubspec.yaml
-
-      - name: Fix main.dart
-        run: |
-          cd auryx-project/lib
-          python3 << 'PYEOF'
-          with open('main.dart', 'r') as f:
-              content = f.read()
-
-          # 1. Add imports
-          if 'shared_preferences' not in content:
-              content = content.replace(
-                  "import 'package:flutter/material.dart';",
-                  "import 'package:flutter/material.dart';\nimport 'package:shared_preferences/shared_preferences.dart';"
-              )
-
-          # 2. Fix main() function
-          import re
-          content = re.sub(
-              r'void main\(\) async \{.*?\n\}',
-              '''void main() async {
-            WidgetsFlutterBinding.ensureInitialized();
-            await Firebase.initializeApp();
-            await AppState.load();
-            runApp(const AuryxApp());
-          }''',
-              content,
-              count=1,
-              flags=re.DOTALL
-          )
-
-          # 3. Fix AppState class - add load/save methods
-          if 'static Future<void> load()' not in content:
-              old_appstate = '''class AppState {
-            static String userName = "আবু উবাইদা";
-            static String userEmail = "abu@auryx.app";
-            static String userPhone = "+8801712345678";
-            static String? profileImagePath;
-            static bool isBangla = true;
-            static bool isDarkMode = true;
-          }'''
-
-              new_appstate = '''class AppState {
-            static String userName = "আবু উবাইদা";
-            static String userEmail = "abu@auryx.app";
-            static String userPhone = "+8801712345678";
-            static String? profileImagePath;
-            static bool isBangla = true;
-            static bool isDarkMode = true;
-
-            static Future<void> load() async {
-              final prefs = await SharedPreferences.getInstance();
-              userName = prefs.getString('userName') ?? userName;
-              userEmail = prefs.getString('userEmail') ?? userEmail;
-              userPhone = prefs.getString('userPhone') ?? userPhone;
-              profileImagePath = prefs.getString('profileImagePath');
-              isBangla = prefs.getBool('isBangla') ?? isBangla;
-              isDarkMode = prefs.getBool('isDarkMode') ?? isDarkMode;
-              print("LOADED: userName = $userName, email = $userEmail");
-            }
-
-            static Future<void> save() async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('userName', userName);
-              await prefs.setString('userEmail', userEmail);
-              await prefs.setString('userPhone', userPhone);
-              if (profileImagePath != null) {
-                await prefs.setString('profileImagePath', profileImagePath!);
-              }
-              await prefs.setBool('isBangla', isBangla);
-              await prefs.setBool('isDarkMode', isDarkMode);
-              print("SAVED: userName = $userName, email = $userEmail");
-            }
-          }'''
-
-              content = content.replace(old_appstate, new_appstate)
-
-          # 4. Make Register onTap async
-          content = content.replace(
-              'onTap: () {\n                  // নাম সেভ করো',
-              'onTap: () async {\n                  // নাম সেভ করো'
-          )
-
-          with open('main.dart', 'w') as f:
-              f.write(content)
-
-          print('=== VERIFICATION ===')
-          print('has shared_preferences import:', 'shared_preferences' in content)
-          print('has AppState.load in main:', 'AppState.load()' in content)
-          print('has load method:', 'static Future<void> load()' in content)
-          print('has save method:', 'static Future<void> save()' in content)
-          print('has async onTap:', 'onTap: () async' in content)
-          PYEOF
-
-      - name: Show AppState in main.dart
-        run: |
-          cd auryx-project/lib
-          echo "=== main() function ==="
-          grep -A 6 "void main" main.dart
-          echo ""
-          echo "=== AppState class ==="
-          grep -A 40 "class AppState" main.dart | head -45
 
       - name: Setup Java
         uses: actions/setup-java@v4
