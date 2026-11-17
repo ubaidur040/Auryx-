@@ -26,6 +26,28 @@ jobs:
         run: |
           cp google-services.json auryx-project/android/app/google-services.json
 
+      - name: Setup release keystore
+        # Restores the persistent upload keystore from GitHub secrets so every
+        # build is signed with the same key (updates install over older versions).
+        # Secrets (repo Settings > Secrets and variables > Actions):
+        #   KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for v in "$KEYSTORE_BASE64" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD"; do
+            if [ -z "$v" ]; then echo "Missing signing secret — check repo Settings > Secrets and variables > Actions" >&2; exit 1; fi
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > auryx-project/android/app/upload-keystore.jks
+          cat > auryx-project/android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
